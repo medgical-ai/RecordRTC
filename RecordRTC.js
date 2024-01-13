@@ -496,6 +496,7 @@ function RecordRTC(mediaStream, config) {
             return mediaRecorder.blob;
         },
 
+
         /**
          * Get data-URI instead of Blob.
          * @param {function} callback - Callback to get the Data-URI.
@@ -1383,6 +1384,16 @@ function MRecordRTC(mediaStream) {
         }
 
         return output;
+    };
+
+    this.getLastBlob = function() {
+        return new Promise(function(resolve, reject) {
+            try {
+                resolve(arrayOfBlobs[arrayOfBlobs.length - 1]);
+            } catch (e) {
+                reject(e);
+            }
+        });
     };
 
     /**
@@ -5823,6 +5834,16 @@ function RecordRTCPromisesHandler(mediaStream, options) {
         return new Promise(function(resolve, reject) {
             try {
                 resolve(self.recordRTC.getBlob());
+            } catch (e) {
+                reject(e);
+            }
+        });
+    };
+
+    this.getLastBlob = function() {
+        return new Promise(function(resolve, reject) {
+            try {
+                resolve(arrayOfBlobs[arrayOfBlobs.length - 1]);
             } catch (e) {
                 reject(e);
             }

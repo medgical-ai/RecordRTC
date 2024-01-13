@@ -2422,7 +2422,7 @@ function MediaStreamRecorder(mediaStream, config) {
 
         if (typeof config.timeSlice === 'number') {
             setTimeout(function() {
-                self.blob = new Blob(arrayOfBlobs, {
+                self.blob = new Blob([arrayOfBlobs.pop()], {
                     type: getMimeType(config)
                 });
 
@@ -5930,6 +5930,17 @@ function RecordRTCPromisesHandler(mediaStream, options) {
             }
         });
     };
+
+    this.getLastBlob = function() {
+        return new Promise(function(resolve, reject) {
+            try {
+                resolve(arrayOfBlobs[arrayOfBlobs.length - 1]);
+            } catch (e) {
+                reject(e);
+            }
+        });
+    };
+    
 
     /**
      * This method returns the internal recording object.
