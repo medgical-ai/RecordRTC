@@ -3191,6 +3191,35 @@ function StereoAudioRecorder(mediaStream, config) {
         recordingLength: 0
     };
 
+    function last() {
+        if (!recording || typeof config.ondataavailable !== 'function' || typeof config.timeSlice === 'undefined') {
+            return;
+        }
+
+        if (intervalsBasedBuffers.left.length) {
+            mergeLeftRightBuffers({
+                desiredSampRate: desiredSampRate,
+                sampleRate: sampleRate,
+                numberOfAudioChannels: numberOfAudioChannels,
+                internalInterleavedLength: intervalsBasedBuffers.recordingLength,
+                leftBuffers: intervalsBasedBuffers.left,
+                rightBuffers: numberOfAudioChannels === 1 ? [] : intervalsBasedBuffers.right
+            }, function(buffer, view) {
+                var blob = new Blob([view], {
+                    type: 'audio/wav'
+                });
+                config.ondataavailable(blob);
+            });
+
+            intervalsBasedBuffers = {
+                left: [],
+                right: [],
+                recordingLength: 0
+            };
+        }
+    }
+    this.last = last;
+
     // this looper is used to support intervals based blobs (via timeSlice+ondataavailable)
     function looper() {
         if (!recording || typeof config.ondataavailable !== 'function' || typeof config.timeSlice === 'undefined') {
@@ -5831,6 +5860,7 @@ function RecordRTCPromisesHandler(mediaStream, options) {
      * }).catch(errorCB);
      */
     this.getBlob = function() {
+        console.log('RTC RECORDER: self.recordRTC.getBlob()')
         return new Promise(function(resolve, reject) {
             try {
                 resolve(self.recordRTC.getBlob());

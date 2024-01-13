@@ -98,13 +98,12 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 0 */
 /***/ (function(module, exports, __webpack_require__) {
 
-"use strict";
-/* WEBPACK VAR INJECTION */(function(global, process) {var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;
+'use strict';
 
-// Last time updated: 2020-07-30 11:26:25 AM UTC
+// Last time updated: 2024-01-03 12:51:19 PM UTC
 
 // ________________
-// RecordRTC v5.6.1
+// RecordRTC v5.6.3
 
 // Open-Sourced: https://github.com/muaz-khan/RecordRTC
 
@@ -597,6 +596,7 @@ function RecordRTC(mediaStream, config) {
             return mediaRecorder.blob;
         },
 
+
         /**
          * Get data-URI instead of Blob.
          * @param {function} callback - Callback to get the Data-URI.
@@ -882,7 +882,7 @@ function RecordRTC(mediaStream, config) {
          * @example
          * alert(recorder.version);
          */
-        version: '5.6.1'
+        version: '5.6.3'
     };
 
     if (!this) {
@@ -900,17 +900,16 @@ function RecordRTC(mediaStream, config) {
     return returnObject;
 }
 
-RecordRTC.version = '5.6.1';
+RecordRTC.version = '5.6.3';
 
-if (true /* && !!module.exports*/ ) {
+if (typeof module !== 'undefined' /* && !!module.exports*/ ) {
     module.exports = RecordRTC;
 }
 
-if (true) {
-    !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = (function() {
+if (typeof define === 'function' && define.amd) {
+    define('RecordRTC', [], function() {
         return RecordRTC;
-    }).apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
-				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+    });
 }
 
 RecordRTC.getFromDisk = function(type, callback) {
@@ -1487,6 +1486,16 @@ function MRecordRTC(mediaStream) {
         return output;
     };
 
+    this.getLastBlob = function() {
+        return new Promise(function(resolve, reject) {
+            try {
+                resolve(arrayOfBlobs[arrayOfBlobs.length - 1]);
+            } catch (e) {
+                reject(e);
+            }
+        });
+    };
+
     /**
      * Destroy all recorder instances.
      * @method
@@ -1917,7 +1926,10 @@ function invokeSaveAsDialog(file, fileName) {
     }
 
     var fileExtension = (file.type || 'video/webm').split('/')[1];
-
+    if (fileExtension.indexOf(';') !== -1) {
+        // extended mimetype, e.g. 'video/webm;codecs=vp8,opus'
+        fileExtension = fileExtension.split(';')[0];
+    }
     if (fileName && fileName.indexOf('.') !== -1) {
         var splitted = fileName.split('.');
         fileName = splitted[0];
@@ -2360,10 +2372,10 @@ function MediaStreamRecorder(mediaStream, config) {
             updateTimeStamp();
             mediaRecorder.start(config.timeSlice);
         } else {
-            // default is 60 minutes; enough?
+            // default is 24 hours; enough? (thanks https://github.com/slidevjs/slidev/pull/488)
             // use config => {timeSlice: 1000} otherwise
 
-            mediaRecorder.start(3.6e+6);
+            mediaRecorder.start(24 * 60 * 60 * 1000);
         }
 
         if (config.initCallback) {
@@ -2422,7 +2434,7 @@ function MediaStreamRecorder(mediaStream, config) {
 
         if (typeof config.timeSlice === 'number') {
             setTimeout(function() {
-                self.blob = new Blob([arrayOfBlobs.pop()], {
+                self.blob = new Blob(arrayOfBlobs, {
                     type: getMimeType(config)
                 });
 
@@ -2858,7 +2870,7 @@ function StereoAudioRecorder(mediaStream, config) {
             view.setUint32(24, sampleRate, true);
 
             // byte rate (sample rate * block align)
-            view.setUint32(28, sampleRate * 2, true);
+            view.setUint32(28, sampleRate * numberOfAudioChannels * 2, true);
 
             // block align (channel count * bytes per sample) 
             view.setUint16(32, numberOfAudioChannels * 2, true);
@@ -3278,6 +3290,35 @@ function StereoAudioRecorder(mediaStream, config) {
         right: [],
         recordingLength: 0
     };
+
+    function last() {
+        if (!recording || typeof config.ondataavailable !== 'function' || typeof config.timeSlice === 'undefined') {
+            return;
+        }
+
+        if (intervalsBasedBuffers.left.length) {
+            mergeLeftRightBuffers({
+                desiredSampRate: desiredSampRate,
+                sampleRate: sampleRate,
+                numberOfAudioChannels: numberOfAudioChannels,
+                internalInterleavedLength: intervalsBasedBuffers.recordingLength,
+                leftBuffers: intervalsBasedBuffers.left,
+                rightBuffers: numberOfAudioChannels === 1 ? [] : intervalsBasedBuffers.right
+            }, function(buffer, view) {
+                var blob = new Blob([view], {
+                    type: 'audio/wav'
+                });
+                config.ondataavailable(blob);
+            });
+
+            intervalsBasedBuffers = {
+                left: [],
+                right: [],
+                recordingLength: 0
+            };
+        }
+    }
+    this.last = last;
 
     // this looper is used to support intervals based blobs (via timeSlice+ondataavailable)
     function looper() {
@@ -4669,9 +4710,7 @@ if (typeof RecordRTC !== 'undefined') {
 
 function GifRecorder(mediaStream, config) {
     if (typeof GIFEncoder === 'undefined') {
-        var script = document.createElement('script');
-        script.src = 'https://www.webrtc-experiment.com/gif-recorder.js';
-        (document.body || document.documentElement).appendChild(script);
+        throw new Error('Missing https://www.webrtc-experiment.com/gif-recorder.js');
     }
 
     config = config || {};
@@ -5501,15 +5540,14 @@ function MultiStreamsMixer(arrayOfMediaStreams, elementClass) {
 }
 
 if (typeof RecordRTC === 'undefined') {
-    if (true /* && !!module.exports*/ ) {
+    if (typeof module !== 'undefined' /* && !!module.exports*/ ) {
         module.exports = MultiStreamsMixer;
     }
 
-    if (true) {
-        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = (function() {
+    if (typeof define === 'function' && define.amd) {
+        define('MultiStreamsMixer', [], function() {
             return MultiStreamsMixer;
-        }).apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
-				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+        });
     }
 }
 
@@ -5517,8 +5555,8 @@ if (typeof RecordRTC === 'undefined') {
 // MultiStreamRecorder.js
 
 /*
- * Video conference recording, using captureStream API along with WebAudio and Canvas2D API.
- */
+    * Video conference recording, using captureStream API along with WebAudio and Canvas2D API.
+    */
 
 /**
  * MultiStreamRecorder can record multiple videos in single container.
@@ -5922,6 +5960,7 @@ function RecordRTCPromisesHandler(mediaStream, options) {
      * }).catch(errorCB);
      */
     this.getBlob = function() {
+        console.log('RTC RECORDER: self.recordRTC.getBlob()')
         return new Promise(function(resolve, reject) {
             try {
                 resolve(self.recordRTC.getBlob());
@@ -5940,7 +5979,6 @@ function RecordRTCPromisesHandler(mediaStream, options) {
             }
         });
     };
-    
 
     /**
      * This method returns the internal recording object.
@@ -6038,7 +6076,7 @@ function RecordRTCPromisesHandler(mediaStream, options) {
      * @example
      * alert(recorder.version);
      */
-    this.version = '5.6.1';
+    this.version = '5.6.3';
 }
 
 if (typeof RecordRTC !== 'undefined') {
@@ -6320,225 +6358,3 @@ function WebAssemblyRecorder(stream, config) {
 if (typeof RecordRTC !== 'undefined') {
     RecordRTC.WebAssemblyRecorder = WebAssemblyRecorder;
 }
-
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(1), __webpack_require__(2)))
-
-/***/ }),
-/* 1 */
-/***/ (function(module, exports) {
-
-var g;
-
-// This works in non-strict mode
-g = (function() {
-	return this;
-})();
-
-try {
-	// This works if eval is allowed (see CSP)
-	g = g || new Function("return this")();
-} catch (e) {
-	// This works if the window reference is available
-	if (typeof window === "object") g = window;
-}
-
-// g can still be undefined, but nothing to do about it...
-// We return undefined, instead of nothing here, so it's
-// easier to handle this case. if(!global) { ...}
-
-module.exports = g;
-
-
-/***/ }),
-/* 2 */
-/***/ (function(module, exports) {
-
-// shim for using process in browser
-var process = module.exports = {};
-
-// cached from whatever global is present so that test runners that stub it
-// don't break things.  But we need to wrap it in a try catch in case it is
-// wrapped in strict mode code which doesn't define any globals.  It's inside a
-// function because try/catches deoptimize in certain engines.
-
-var cachedSetTimeout;
-var cachedClearTimeout;
-
-function defaultSetTimout() {
-    throw new Error('setTimeout has not been defined');
-}
-function defaultClearTimeout () {
-    throw new Error('clearTimeout has not been defined');
-}
-(function () {
-    try {
-        if (typeof setTimeout === 'function') {
-            cachedSetTimeout = setTimeout;
-        } else {
-            cachedSetTimeout = defaultSetTimout;
-        }
-    } catch (e) {
-        cachedSetTimeout = defaultSetTimout;
-    }
-    try {
-        if (typeof clearTimeout === 'function') {
-            cachedClearTimeout = clearTimeout;
-        } else {
-            cachedClearTimeout = defaultClearTimeout;
-        }
-    } catch (e) {
-        cachedClearTimeout = defaultClearTimeout;
-    }
-} ())
-function runTimeout(fun) {
-    if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
-        return setTimeout(fun, 0);
-    }
-    // if setTimeout wasn't available but was latter defined
-    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
-        cachedSetTimeout = setTimeout;
-        return setTimeout(fun, 0);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedSetTimeout(fun, 0);
-    } catch(e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-            return cachedSetTimeout.call(null, fun, 0);
-        } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-            return cachedSetTimeout.call(this, fun, 0);
-        }
-    }
-
-
-}
-function runClearTimeout(marker) {
-    if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
-        return clearTimeout(marker);
-    }
-    // if clearTimeout wasn't available but was latter defined
-    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
-        cachedClearTimeout = clearTimeout;
-        return clearTimeout(marker);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedClearTimeout(marker);
-    } catch (e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-            return cachedClearTimeout.call(null, marker);
-        } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-            return cachedClearTimeout.call(this, marker);
-        }
-    }
-
-
-
-}
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = runTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    runClearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        runTimeout(drainQueue);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-process.prependListener = noop;
-process.prependOnceListener = noop;
-
-process.listeners = function (name) { return [] }
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
-
-
-/***/ })
-/******/ ]);
-});
