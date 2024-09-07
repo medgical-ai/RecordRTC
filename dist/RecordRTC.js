@@ -3154,8 +3154,9 @@ function StereoAudioRecorder(mediaStream, config) {
 
         clearRecordedDataCB();
     };
-    
+
     function resetVariables(stopRecording) {
+        console.log('internal resetVariables');
         leftchannel = [];
         rightchannel = [];
         recordingLength = 0;

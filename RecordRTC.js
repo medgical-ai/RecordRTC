@@ -3056,6 +3056,7 @@ function StereoAudioRecorder(mediaStream, config) {
     };
 
     function resetVariables(stopRecording) {
+        console.log('internal resetVariables');
         leftchannel = [];
         rightchannel = [];
         recordingLength = 0;
