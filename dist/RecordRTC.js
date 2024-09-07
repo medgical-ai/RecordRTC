@@ -3154,15 +3154,19 @@ function StereoAudioRecorder(mediaStream, config) {
 
         clearRecordedDataCB();
     };
-
-    function resetVariables() {
+    
+    function resetVariables(stopRecording) {
         leftchannel = [];
         rightchannel = [];
         recordingLength = 0;
-        isAudioProcessStarted = false;
-        recording = false;
-        isPaused = false;
-        context = null;
+
+        if (stopRecording === undefined) {
+            console.log('stopRecording all');
+            isAudioProcessStarted = false;
+            recording = false;
+            isPaused = false;
+            context = null;
+        }
 
         self.leftchannel = leftchannel;
         self.rightchannel = rightchannel;
@@ -3176,6 +3180,11 @@ function StereoAudioRecorder(mediaStream, config) {
             right: [],
             recordingLength: 0
         };
+    }
+
+    //make fucntion available to public
+    this.freeMemory = function() {
+        resetVariables(false);
     }
 
     function clearRecordedDataCB() {
